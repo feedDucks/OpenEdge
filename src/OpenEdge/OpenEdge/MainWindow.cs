@@ -271,7 +271,9 @@ public partial class MainWindow : Page, IComponentConnector
 
 	private readonly SessionFlagStore sessionFlagStore;
 
-	public MainWindow(SecondWindow sWR, MediaCatalogService mediaCatalog, CompatibilityStateService compatibilityStateService, SettingsRegistry settingsRegistry)
+    private readonly TtsService tts = new TtsService();
+
+    public MainWindow(SecondWindow sWR, MediaCatalogService mediaCatalog, CompatibilityStateService compatibilityStateService, SettingsRegistry settingsRegistry)
 	{
 		this.mediaCatalog = mediaCatalog;
 		this.compatibilityStateService = compatibilityStateService;
@@ -4485,36 +4487,9 @@ public partial class MainWindow : Page, IComponentConnector
 
 	private void syntheticAudio(string text, bool leftEar, float volume)
 	{
-		try
-		{
-			SpeechSynthesizer speechSynthesizer = new SpeechSynthesizer();
-			speechSynthesizer.SetOutputToDefaultAudioDevice();
-			MemoryStream memoryStream = new MemoryStream();
-			speechSynthesizer.SelectVoiceByHints(VoiceGender.Female);
-			speechSynthesizer.Rate = 0;
-			speechSynthesizer.SetOutputToWaveStream(memoryStream);
-			volume *= (float)(masterVolumeValue / 2.0 * ttsVolumeValue / 2.0);
-			speechSynthesizer.Speak(text);
-			memoryStream.Seek(0L, SeekOrigin.Begin);
-			MonoToStereoProvider16 monoToStereoProvider = new MonoToStereoProvider16(new WaveFileReader(memoryStream));
-			if (leftEar)
-			{
-				monoToStereoProvider.LeftVolume = volume;
-				monoToStereoProvider.RightVolume = 0f;
-			}
-			else
-			{
-				monoToStereoProvider.LeftVolume = 0f;
-				monoToStereoProvider.RightVolume = volume;
-			}
-			WaveOutEvent waveOutEvent = new WaveOutEvent();
-			waveOutEvent.Init(monoToStereoProvider);
-			waveOutEvent.Play();
-		}
-		catch
-		{
-		}
-	}
+        volume *= (float)(masterVolumeValue / 2.0 * ttsVolumeValue / 2.0);
+        tts.Speak(text, volume, leftEar);
+    }
 
 	private void WaveOut_PlaybackStopped(object sender, StoppedEventArgs e)
 	{
@@ -4779,7 +4754,8 @@ public partial class MainWindow : Page, IComponentConnector
 		if (!subliminal)
 		{
 			lr.readText(text);
-			base.Dispatcher.InvokeAsync(delegate
+            tts.Speak(text.Replace("\n", ". "), 1f * (float)(masterVolumeValue / 2.0 * ttsVolumeValue / 2.0));
+            base.Dispatcher.InvokeAsync(delegate
 			{
 				TextBlock textBlock = new TextBlock
 				{
