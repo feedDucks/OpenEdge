@@ -19,3 +19,4 @@ todo.md
 .gitignore
 Reports/
 artifacts/
+/.vs
